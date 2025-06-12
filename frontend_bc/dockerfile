@@ -1,7 +1,0 @@
-FROM node:22
-WORKDIR /frontend_bc/
-COPY public/ /frontend_bc/public
-COPY src/ /frontend_bc/src
-COPY package.json /frontend_bc/
-RUN npm install
-CMD ["npm", "start"]
