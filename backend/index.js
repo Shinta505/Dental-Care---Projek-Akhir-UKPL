@@ -12,8 +12,16 @@ import sequelize from "./config/Database.js";
 
 dotenv.config();
 const app = express();
+
 app.use(cookieParser());
-app.use(cors({ credentials:true,origin:'http://localhost:3000', methods: ["GET", "POST", "PUT", "DELETE"], }));
+
+// 1. Sesuaikan CORS agar mengizinkan akses dari domain Vercel nantinya
+app.use(cors({ 
+  credentials: true,
+  // Mengizinkan localhost ATAU URL frontend produksi dari Environment Variable Vercel
+  origin: ['http://localhost:3000', process.env.FRONTEND_URL], 
+  methods: ["GET", "POST", "PUT", "DELETE"], 
+}));
 
 app.use(express.json());
 app.use(UserRoute);
@@ -23,18 +31,21 @@ app.use(PeriksaRoute);
 app.use(ObatRoute);
 app.use(StrukRoute);
 
-const start = async () => {
-  try {
-    await sequelize.authenticate();
+// 2. Hubungkan ke database tanpa memblokir proses eksekusi Vercel
+sequelize.authenticate()
+  .then(() => {
     console.log("Database connected");
-    await sequelize.sync(); // sinkronisasi model
-
-    // Menggunakan PORT dari environment atau default ke 5000
-    const port = process.env.PORT || 5000;
-    app.listen(port, '0.0.0.0', () => console.log(`Server running on port ${port}`));
-  } catch (error) {
+    return sequelize.sync(); // sinkronisasi model
+  })
+  .catch((error) => {
     console.error("Unable to connect to the database:", error);
-  }
-};
+  });
 
-start();
+// 3. Jalankan app.listen() HANYA jika dieksekusi di laptop (bukan Vercel)
+if (process.env.NODE_ENV !== 'production') {
+  const port = process.env.PORT || 5000;
+  app.listen(port, '0.0.0.0', () => console.log(`Server running on port ${port}`));
+}
+
+// 4. Baris WAJIB agar Vercel bisa membaca dan menjalankan routing API-mu
+export default app;
